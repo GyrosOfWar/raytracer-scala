@@ -1,0 +1,100 @@
+##################
+## Eclipse
+##################
+
+*.pydevproject
+.project
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+
+##################
+## IntelliJ
+##################
+
+.idea/
+*.iml
+*.iws
+
+##################
+## Java
+##################
+
+*.class
+
+##################
+## Ruby | Bundler
+##################
+
+*.gem
+*.rbc
+.bundle
+.config
+.yardoc
+Gemfile.lock
+InstalledFiles
+_yardoc
+coverage
+doc/
+lib/bundler/man
+pkg
+rdoc
+spec/reports
+test/tmp
+test/version_tmp
+tmp
+
+##################
+## Python
+##################
+
+*.pyc
+
+##################
+## SBT specific
+##################
+
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+##################
+## Maven
+##################
+
+log/
+target/
+/.idea/workspace.xml
+
+##################
+## Scala-IDE
+##################
+
+.scala_dependencies
+
+##################
+## Mac specific
+##################
+
+.DS_Store
+
+##################
+## Generic stuff
+##################
+
+*~
+*.lock
+*.swp
+*.out
+*.log
