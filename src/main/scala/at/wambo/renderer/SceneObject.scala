@@ -22,7 +22,7 @@ trait ShinySurface extends HasSurface {
   override val surface = Surface(
     diffuse = pos => Vec(1, 1, 1),
     specular = pos => Vec(0.5, 0.5, 0.5),
-    reflect = pos => .6,
+    reflect = pos => 0.6,
     roughness = 50
   )
 }
@@ -57,7 +57,7 @@ case class Sphere(center: Vec, radius: Double) extends SceneObject with HasSurfa
         0
       }
       else {
-        val disc = math.pow(radius, 2) - (eo.dot(eo) - math.pow(v, 2))
+        val disc = (radius * radius) - (eo.dot(eo) - (v * v))
         if (disc < 0)
           0
         else
@@ -68,6 +68,7 @@ case class Sphere(center: Vec, radius: Double) extends SceneObject with HasSurfa
       None
     else
       Some(Intersection(thing = this, ray = ray, distance = dist))
+
   }
 
   def normal(pos: Vec): Vec = (pos - center).normalize

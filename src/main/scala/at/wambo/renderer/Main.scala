@@ -50,6 +50,8 @@ object Main extends JFXApp {
       Await.ready(f, 3 minutes)
     }
     parRt.close()
+
+    Util.printStats("render")
   }
 
   stage = new JFXApp.PrimaryStage {

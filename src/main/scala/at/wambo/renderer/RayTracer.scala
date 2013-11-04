@@ -19,9 +19,13 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
   private val defaultColor = Vec.Zero
   private val (screenWidth, screenHeight) = size
 
-  private def intersections(ray: Ray, scene: Scene) = scene.things.flatMap(_.intersect(ray)).sortBy(_.distance)
+  private def intersections(ray: Ray, scene: Scene) =
+    (for {
+      thing <- scene.things
+      intersection <- thing.intersect(ray)
+    } yield intersection) sortBy (_.distance)
 
-  private def testRay(ray: Ray, scene: Scene) =
+  private def testRay(ray: Ray, scene: Scene): Double =
     intersections(ray, scene).headOption match {
       case Some(intersection) => intersection.distance
       case None => 0.0
@@ -82,6 +86,8 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
     val (startX, startY) = startPos
     val (endX, endY) = endPos
 
+    Util.timedCall("render") {
+
     for (y <- startY until endY) {
       for (x <- startX until endX) {
         val color = traceRay(Ray(start = scene.camera.position,
@@ -89,8 +95,10 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
         setPixel(x, y, color.toScalaFxColor)
       }
     }
+    }
   }
 }
+
 
 class ParallelRayTracer(writer: PixelWriter, scene: Scene, imageSize: (Int, Int), numThreads: Int) {
   val system = ActorSystem("renderer")
@@ -99,15 +107,15 @@ class ParallelRayTracer(writer: PixelWriter, scene: Scene, imageSize: (Int, Int)
   private val colsPerThread = height / numThreads
 
   def render() = {
-    val children = for (i <- 0 until numThreads)
-      yield system.actorOf(Props(classOf[RenderActor], writer, imageSize, scene))
+    val rayTracer = new RayTracer(writer.setColor, imageSize)
+    val children = for (i <- 0 until numThreads) yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))
     val ret = for ((child, idx) <- children.zipWithIndex) yield {
       val startY = colsPerThread * idx
       val endY = colsPerThread * (idx + 1)
       (child ? Render((0, startY), (width, endY))).mapTo[Long]
     }
 
-    for(c <- children) system stop c
+    for (c <- children) system stop c
     ret
   }
 
@@ -120,10 +128,9 @@ case class Render(startPos: (Int, Int), endPos: (Int, Int))
 
 case class Finished(time: Long)
 
-class RenderActor(writer: PixelWriter, imageSize: (Int, Int), scene: Scene) extends Actor {
+class RenderActor(rt: RayTracer, scene: Scene) extends Actor {
   def receive = {
     case Render(start, end) => {
-      val rt = new RayTracer(writer.setColor, imageSize)
       rt.render(scene, start, end)
       sender ! Finished(System.nanoTime())
     }

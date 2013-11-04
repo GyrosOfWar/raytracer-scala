@@ -55,7 +55,7 @@ object Surface {
   val Default = Surface(
     diffuse = pos => Vec(1, 1, 1),
     specular = pos => Vec(0.5, 0.5, 0.5),
-    reflect = pos => .6,
+    reflect = pos => 0.6,
     roughness = 50
   )
 }
@@ -74,12 +74,30 @@ case class Scene(things: Vector[SceneObject], lights: Vector[Light], camera: Cam
 }
 
 object Util {
-  def timedCall[A](msg: String)(block: => A): A = {
+  private var times = Vector.empty[(String, Long)]
+
+  def timedCall[A](functionName: String, printTime: Boolean = true)(block: => A): A = {
     val t0 = System.nanoTime()
     val result = block
     val t1 = System.nanoTime()
-    println(s"$msg, Time: ${(t1 - t0) / 1000000.toDouble} ms")
+    if (printTime)
+      println(s"$functionName: Time: ${BigDecimal(t1 - t0) / BigDecimal(1000000)} ms")
+    times = times :+ functionName -> (t1 - t0)
     result
+  }
+
+  def printStats(functionName: String) {
+    require(times.map(_._1).contains(functionName))
+
+    val fnTimes = for {
+      (name, time) <- times
+      if name == functionName
+    } yield BigDecimal(time) / BigDecimal(1000000)
+    val median = fnTimes.sorted.apply(fnTimes.length / 2)
+    println(s"Showing profiling information for: $functionName")
+    println(s"Median time: $median ms")
+    println(s"Max/Min/Range: ${fnTimes.max} ms/${fnTimes.min} ms/${fnTimes.max - fnTimes.min} ms")
+    println(s"Number of samples: ${fnTimes.length}")
   }
 
 }
