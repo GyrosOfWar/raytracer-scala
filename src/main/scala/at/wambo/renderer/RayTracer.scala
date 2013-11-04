@@ -19,9 +19,7 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
   private val defaultColor = Vec.Zero
   private val (screenWidth, screenHeight) = size
 
-  private def intersections(ray: Ray, scene: Scene) = {
-    scene.things.flatMap(_.intersect(ray)).sortBy(_.distance)
-  }
+  private def intersections(ray: Ray, scene: Scene) = scene.things.flatMap(_.intersect(ray)).sortBy(_.distance)
 
   private def testRay(ray: Ray, scene: Scene) =
     intersections(ray, scene).headOption match {

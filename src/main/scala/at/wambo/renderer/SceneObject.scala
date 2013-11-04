@@ -15,7 +15,7 @@ sealed trait SceneObject {
 
 sealed trait HasSurface {
   // ShinySurface is default
-  val surface = Surface.Default
+  val surface: Surface = Surface.Default
 }
 
 trait ShinySurface extends HasSurface {

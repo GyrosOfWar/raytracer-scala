@@ -36,29 +36,31 @@ object Main extends JFXApp {
 
   lazy val imageView = new ImageView()
 
+  lazy val renderButton = new Button("Render") {
+    prefHeight = 25
+    onAction = (e: ActionEvent) => {
+      render()
+      imageView.image = rendererImage
+    }
+  }
+
   def render() {
     val futures = parRt.render()
-    futures foreach {
-      f => Await.ready(f, 15 seconds)
+    for(f <- futures) {
+      Await.ready(f, 3 minutes)
     }
     parRt.close()
   }
 
   stage = new JFXApp.PrimaryStage {
     title = "RayTracer"
-    height = h + 150
+    height = h + renderButton.prefHeight() + 10
     width = w
     resizable = false
     scene = new scalafx.scene.Scene(w, h) {
       root = new VBox {
-        content = List(imageView,
-          new Button("Render") {
-            onAction = (e: ActionEvent) => {
-              render()
-              imageView.image = rendererImage
-            }
-          }
-        )
+        spacing = 5
+        content = List(imageView, renderButton)
       }
     }
   }
