@@ -31,20 +31,38 @@ trait CheckerboardSurface extends HasSurface {
   override val surface = Surface(
     diffuse = pos => {
       if ((math.floor(pos.z).toInt + math.floor(pos.x).toInt) % 2 != 0) {
-        Vec(1, 1, 1)
+        Vec(0.7, 0.14, 0.07)
       }
       else {
-        Vec(0, 0, 0)
+        Vec(0.1, 0.2, 0.7)
       }
     },
     specular = pos => Vec(1, 1, 1),
     reflect = pos => {
       if ((math.floor(pos.z).toInt + math.floor(pos.x).toInt) % 2 != 0)
-        0.1
+        0.2
       else
-        0.7
+        0.9
     },
     roughness = 200
+  )
+}
+
+trait TestSurface extends HasSurface {
+  override val surface = Surface(
+    diffuse = pos => Vec(1, 1, 1),
+    specular = pos => Vec(0.5, 0.5, 0.5),
+    reflect = pos => 0.9,
+    roughness = 50
+  )
+}
+
+trait DiffuseSurface extends HasSurface {
+  override val surface = Surface(
+    diffuse = pos => Vec(1, 1, 1),
+    specular = pos => Vec(0, 0, 0),
+    reflect = pos => 0,
+    roughness = 0
   )
 }
 

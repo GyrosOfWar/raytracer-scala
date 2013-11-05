@@ -19,18 +19,40 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
   private val defaultColor = Vec.Zero
   private val (screenWidth, screenHeight) = size
 
+  /**
+   * Intersects a ray with a scene.
+   * @param ray The ray to use in the intersection
+   * @param scene The scene to test against
+   * @return The list of intersections of the ray, sorted by their distance to the ray origin.
+   */
   private def intersections(ray: Ray, scene: Scene) =
     (for {
       thing <- scene.things
       intersection <- thing.intersect(ray)
     } yield intersection) sortBy (_.distance)
 
+  /**
+   * Computes the intersections of a ray and a scene and returns the distance of the first object hit.
+   * @param ray Ray to test
+   * @param scene Scene to test
+   * @return The distance of the first object that was hit by the ray or 0 if there were no intersections.
+   */
   private def testRay(ray: Ray, scene: Scene): Double =
     intersections(ray, scene).headOption match {
       case Some(intersection) => intersection.distance
       case None => 0.0
     }
 
+  /**
+   * This is called for every object intersection and applies shading and lighting to the object at the point
+   * of the intersection. The arguments are all at the point of the reflection.
+   * @param thing SceneObject to use
+   * @param pos World position of the SceneObject at the intersection
+   * @param norm Normal vector at the intersection
+   * @param reflectDir reflection direction at the point of the intersection
+   * @param scene Scene to test
+   * @return Color after applying all of the lights and shading
+   */
   private def getNaturalColor(thing: SceneObject, pos: Vec, norm: Vec, reflectDir: Vec, scene: Scene): Vec = {
     (for (light <- scene.lights) yield {
       val lightDir = light.position - pos
@@ -50,13 +72,32 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
     }).reduce((v, w) => v + w)
   }
 
+
+  /**
+   * Given a SceneObject and its position, normal and reflection direction, computes the reflection color at
+   * an intersection with a ray.
+   * @param thing SceneObject
+   * @param pos World position
+   * @param norm Normal vector
+   * @param reflectDir Reflection direction
+   * @param scene ..
+   * @param depth The current recursion depth
+   * @return Color of the reflected surface.
+   */
   private def getReflectionColor(thing: SceneObject, pos: Vec, norm: Vec, reflectDir: Vec, scene: Scene, depth: Int): Vec = {
     traceRay(Ray(pos, reflectDir), scene, depth + 1) * thing.surface.reflect(pos)
   }
 
+  /**
+   * Does the complete shading for one intersection, with reflections and normal shading.
+   * @param intersection The intersection, consisting of the SceneObject, the ray and the distance.
+   * @param scene Scene to use.
+   * @param depth Current recursion depth.
+   * @return Color of the point at which the intersection occurred.
+   */
   private def shade(intersection: Intersection, scene: Scene, depth: Int): Vec = {
     val d = intersection.ray.direction
-    val pos = intersection.ray.direction * intersection.distance + intersection.ray.start
+    val pos = d * intersection.distance + intersection.ray.start
     val normal = intersection.thing.normal(pos)
     val reflectDir = d - ((normal * normal.dot(d)) * 2)
     val ret = defaultColor + getNaturalColor(intersection.thing, pos, normal, reflectDir, scene)
@@ -68,6 +109,14 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
 
   }
 
+  /**
+   * Traces one ray. First computes the intersections of the ray, then computes its shading, or otherwise returns
+   * the background color (if no intersections were found).
+   * @param ray Ray to trace
+   * @param scene Scene to test against
+   * @param depth Current recursion depth
+   * @return Color of the ray at the given position.
+   */
   private def traceRay(ray: Ray, scene: Scene, depth: Int): Vec =
     intersections(ray, scene).headOption match {
       case Some(intersection) => shade(intersection, scene, depth)
@@ -86,17 +135,20 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
     val (startX, startY) = startPos
     val (endX, endY) = endPos
 
-    Util.timedCall("render") {
-
-    for (y <- startY until endY) {
-      for (x <- startX until endX) {
-        val color = traceRay(Ray(start = scene.camera.position,
-          direction = getPoint(x, y, scene.camera)), scene, 0)
+    Util.timedCall("render", printTime = false) {
+      for {y <- startY until endY
+           x <- startX until endX} {
+        val color = traceRay(
+          Ray(
+            start = scene.camera.position,
+            direction = getPoint(x, y, scene.camera)),
+          scene = scene,
+          depth = 0)
         setPixel(x, y, color.toScalaFxColor)
       }
     }
-    }
   }
+
 }
 
 
@@ -115,7 +167,7 @@ class ParallelRayTracer(writer: PixelWriter, scene: Scene, imageSize: (Int, Int)
       (child ? Render((0, startY), (width, endY))).mapTo[Long]
     }
 
-    for (c <- children) system stop c
+    children foreach system.stop
     ret
   }
 

@@ -23,13 +23,13 @@ object Main extends JFXApp {
   val rendererScene = Scene(
     things = Vector(
       new Plane(normal = Vec(0, 1, 0), offset = 0) with CheckerboardSurface,
-      new Sphere(center = Vec(-1, -1, 0), radius = 1) with ShinySurface,
-      new Sphere(center = Vec(-1, 0.5, 1.5), radius = 0.5) with ShinySurface
+      new Sphere(center = Vec(-1, 0.5, 1.5), radius = 0.5) with DiffuseSurface,
+      new Sphere(center = Vec(1, 0.5, 1.5), radius = 0.5) with DiffuseSurface
     ),
     lights = Vector(
-      Light(position = Vec(-2, 2.5, 0), color = Vec.One),
-      Light(position = Vec(1.5, 2.5, 1.5), color = Vec(0.07, 0.07, 0.49)),
-      Light(position = Vec(0, 3.5, 0), color = Vec(0.21, 0.21, 0.35))
+      Light(position = Vec(2, 2.5, 0), color = Vec.One) //,
+      //Light(position = Vec(1.5, 2.5, 1.5), color = Vec(0.07, 0.07, 0.49)),
+      //Light(position = Vec(0, 3.5, 0), color = Vec(0.21, 0.21, 0.35))
     ), camera = Camera(Vec(3, 2, 4), Vec(-3, -1, -1)))
 
   val parRt = new ParallelRayTracer(writer, rendererScene, (w, h), numOfThreads)
@@ -46,7 +46,7 @@ object Main extends JFXApp {
 
   def render() {
     val futures = parRt.render()
-    for(f <- futures) {
+    for (f <- futures) {
       Await.ready(f, 3 minutes)
     }
     parRt.close()
