@@ -1,18 +1,16 @@
 import at.wambo.renderer._
-import concurrent.Await
 import scalafx.application.JFXApp
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Button
 import scalafx.scene.image.{ImageView, WritableImage}
 import scalafx.scene.layout.VBox
 import scalafx.scene.paint.Color
-import concurrent.duration._
 import scalafx.event.EventIncludes._
 
 object Main extends JFXApp {
   val w = 800
   val h = 600
-  val numOfThreads = 4
+  val numOfThreads = 8
   val rendererImage = new WritableImage(w, h)
   val writer = rendererImage.pixelWrit
 
@@ -32,7 +30,8 @@ object Main extends JFXApp {
       //Light(position = Vec(0, 3.5, 0), color = Vec(0.21, 0.21, 0.35))
     ), camera = Camera(Vec(3, 2, 4), Vec(-3, -1, -1)))
 
-  val parRt = new ParallelRayTracer(writer, rendererScene, (w, h), numOfThreads)
+  // val parRt = new ParallelRayTracer(writer, rendererScene, (w, h), numOfThreads)
+  val rt = new RayTracer(setPixel, (w, h))
 
   lazy val imageView = new ImageView()
 
@@ -45,18 +44,19 @@ object Main extends JFXApp {
   }
 
   def render() {
-    val futures = parRt.render()
-    for (f <- futures) {
-      Await.ready(f, 3 minutes)
-    }
-    parRt.close()
+    //    val futures = parRt.render()
+    //    for (f <- futures) {
+    //      Await.ready(f, 3 minutes)
+    //    }
+    //    parRt.close()
+    rt.render(rendererScene, (0, 0), (w, h))
 
-    Util.printStats("render")
+    //Util.printStats("render")
   }
 
   stage = new JFXApp.PrimaryStage {
     title = "RayTracer"
-    height = h + renderButton.prefHeight() + 10
+    height = h
     width = w
     resizable = false
     scene = new scalafx.scene.Scene(w, h) {

@@ -19,3 +19,6 @@ fork in run := true
 
 testOptions += Tests.Argument(TestFrameworks.JUnit, "-v")
 
+atmosSettings
+
+atmosTestSettings

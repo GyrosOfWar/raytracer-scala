@@ -7,7 +7,8 @@ import scalafx.scene.paint.Color
  * Date: 31.10.13
  * Time: 11:46
  */
-case class Vec(x: Double, y: Double, z: Double) {
+case class Vec(x: Double, y: Double, z: Double = 1) {
+
   def +(that: Vec) = Vec(this.x + that.x, this.y + that.y, this.z + that.z)
 
   def +(d: Double) = Vec(this.x + d, this.y + d, this.z + d)
