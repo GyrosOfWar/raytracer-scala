@@ -19,7 +19,6 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int), AAEna
   private val (screenWidth, screenHeight) = size
   private val samplingPattern = List(Vec2(0, 0.25), Vec2(0, -0.25), Vec2(0.25, 0), Vec2(-0.25, 0), Vec2(0, 0)).map(_ * 2)
   //private val samplingPattern = for(_ <- 1 to 4) yield Vec2(math.random-1, math.random-1)
-  println(samplingPattern)
 
   /**
    * Intersects a ray with a scene.
@@ -167,7 +166,7 @@ class ParallelRayTracer(setPixel: (Int, Int, Color) => Unit, scene: Scene, image
   def render() = {
     val rayTracer = new RayTracer(setPixel, imageSize)
     val children = (for (i <- 0 until numThreads)
-      yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))).zipWithIndex
+    yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))).zipWithIndex
     for {(child, idx) <- children
          startY = colsPerThread * idx
          endY = colsPerThread * (idx + 1)} yield {

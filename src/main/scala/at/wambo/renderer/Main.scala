@@ -23,11 +23,12 @@ object Main extends JFXApp {
   val rendererScene = Scene(
     things = Vector(
       new Plane(normal = Vec3(0, 1, 0), offset = 0) with CheckerboardSurface,
-      new Sphere(center = Vec3(-1, 0.5, 1.5), radius = 0.5) with DiffuseSurface,
+      new Sphere(center = Vec3(-1, 0.5, 1.5), radius = 0.5) with ShinySurface,
       new Sphere(center = Vec3(1, 0.5, 1.5), radius = 0.5) with DiffuseSurface
     ),
     lights = Vector(
-      Light(position = Vec3(2, 2.5, 0), color = Vec3.One)
+      Light(position = Vec3(2, 1, 3), color = Vec3.One),
+      Light(position = Vec3(-4, 5, 3), color = Vec3.One)
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
   val parRt = new ParallelRayTracer(setPixel, rendererScene, (w, h), numOfThreads)
