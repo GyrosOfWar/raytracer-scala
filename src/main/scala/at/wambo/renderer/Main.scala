@@ -1,4 +1,6 @@
 import at.wambo.renderer._
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scalafx.application.JFXApp
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Button
@@ -25,13 +27,10 @@ object Main extends JFXApp {
       new Sphere(center = Vec(1, 0.5, 1.5), radius = 0.5) with DiffuseSurface
     ),
     lights = Vector(
-      Light(position = Vec(2, 2.5, 0), color = Vec.One) //,
-      //Light(position = Vec(1.5, 2.5, 1.5), color = Vec(0.07, 0.07, 0.49)),
-      //Light(position = Vec(0, 3.5, 0), color = Vec(0.21, 0.21, 0.35))
+      Light(position = Vec(2, 2.5, 0), color = Vec.One)
     ), camera = Camera(Vec(3, 2, 4), Vec(-3, -1, -1)))
 
-  // val parRt = new ParallelRayTracer(writer, rendererScene, (w, h), numOfThreads)
-  val rt = new RayTracer(setPixel, (w, h))
+  val parRt = new ParallelRayTracer(setPixel, rendererScene, (w, h), numOfThreads)
 
   lazy val imageView = new ImageView()
 
@@ -44,13 +43,11 @@ object Main extends JFXApp {
   }
 
   def render() {
-    //    val futures = parRt.render()
-    //    for (f <- futures) {
-    //      Await.ready(f, 3 minutes)
-    //    }
-    //    parRt.close()
-    rt.render(rendererScene, (0, 0), (w, h))
-
+    val futures = parRt.render()
+    for (f <- futures) {
+      Await.ready(f, 3 minutes)
+    }
+    parRt.close()
     //Util.printStats("render")
   }
 

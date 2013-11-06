@@ -2,7 +2,6 @@ package at.wambo.renderer
 
 import scalafx.scene.paint.Color
 import akka.actor._
-import scalafx.scene.image.PixelWriter
 import akka.util.Timeout
 import concurrent.duration._
 import akka.pattern.ask
@@ -97,17 +96,15 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
    * @return Color of the point at which the intersection occurred.
    */
   private def shade(intersection: Intersection, scene: Scene, depth: Int): Vec = {
-    Util.timedCall("render", printTime = false) {
-      val d = intersection.ray.direction
-      val pos = d * intersection.distance + intersection.ray.start
-      val normal = intersection.thing.normal(pos)
-      val reflectDir = d - ((normal * normal.dot(d)) * 2)
-      val ret = defaultColor + getNaturalColor(intersection.thing, pos, normal, reflectDir, scene)
-      if (depth >= maxDepth)
-        ret + Vec(0.5, 0.5, 0.5)
-      else {
-        ret + getReflectionColor(intersection.thing, pos + reflectDir * 0.001, normal, reflectDir, scene, depth)
-      }
+    val d = intersection.ray.direction
+    val pos = d * intersection.distance + intersection.ray.start
+    val normal = intersection.thing.normal(pos)
+    val reflectDir = d - ((normal * normal.dot(d)) * 2)
+    val ret = defaultColor + getNaturalColor(intersection.thing, pos, normal, reflectDir, scene)
+    if (depth >= maxDepth)
+      ret + Vec(0.5, 0.5, 0.5)
+    else {
+      ret + getReflectionColor(intersection.thing, pos + reflectDir * 0.001, normal, reflectDir, scene, depth)
     }
   }
 
@@ -120,9 +117,11 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
    * @return Color of the ray at the given position.
    */
   private def traceRay(ray: Ray, scene: Scene, depth: Int): Vec =
-    intersections(ray, scene).headOption match {
-      case Some(intersection) => shade(intersection, scene, depth)
-      case None => backgroundColor
+    Util.timedCall("render", printTime = false) {
+      intersections(ray, scene).headOption match {
+        case Some(intersection) => shade(intersection, scene, depth)
+        case None => backgroundColor
+      }
     }
 
   private def recenterX(x: Double): Double = (x - (screenWidth / 2.0)) / (2.0 * screenWidth)
@@ -151,14 +150,14 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
 }
 
 
-class ParallelRayTracer(writer: PixelWriter, scene: Scene, imageSize: (Int, Int), numThreads: Int) {
+class ParallelRayTracer(setPixel: (Int, Int, Color) => Unit, scene: Scene, imageSize: (Int, Int), numThreads: Int) {
   val system = ActorSystem("renderer")
   val (width, height) = imageSize
   implicit val timeout = Timeout(15 seconds)
   private val colsPerThread = height / numThreads
 
   def render() = {
-    val rayTracer = new RayTracer(writer.setColor, imageSize)
+    val rayTracer = new RayTracer(setPixel, imageSize)
     val children = for (i <- 0 until numThreads) yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))
     val ret = for ((child, idx) <- children.zipWithIndex) yield {
       val startY = colsPerThread * idx
