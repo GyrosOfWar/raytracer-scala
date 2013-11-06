@@ -12,12 +12,14 @@ import akka.pattern.ask
  * Time: 23:40
  */
 
-class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
+class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int), AAEnabled: Boolean = true) {
   private val maxDepth = 5
-  private val backgroundColor = Vec.Zero
-  private val defaultColor = Vec.Zero
+  private val backgroundColor = Vec3.Zero
+  private val defaultColor = Vec3.Zero
   private val (screenWidth, screenHeight) = size
-  private val samplingPattern = List(Vec(0, 0.25), Vec(0, -0.25), Vec(0.25, 0), Vec(-0.25, 0))
+  private val samplingPattern = List(Vec2(0, 0.25), Vec2(0, -0.25), Vec2(0.25, 0), Vec2(-0.25, 0), Vec2(0, 0)).map(_ * 2)
+  //private val samplingPattern = for(_ <- 1 to 4) yield Vec2(math.random-1, math.random-1)
+  println(samplingPattern)
 
   /**
    * Intersects a ray with a scene.
@@ -53,7 +55,7 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
    * @param scene Scene to test
    * @return Color after applying all of the lights and shading
    */
-  private def getNaturalColor(thing: SceneObject, pos: Vec, norm: Vec, reflectDir: Vec, scene: Scene): Vec = {
+  private def getNaturalColor(thing: SceneObject, pos: Vec3, norm: Vec3, reflectDir: Vec3, scene: Scene): Vec3 = {
     (for (light <- scene.lights) yield {
       val lightDir = light.position - pos
       val lightVec = lightDir.normalize
@@ -61,9 +63,9 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
       val isInShadow = !((is > lightDir.magnitude) || is == 0)
       if (!isInShadow) {
         val illum = lightVec.dot(norm)
-        val lightColor = if (illum > 0) light.color * illum else Vec.Zero
+        val lightColor = if (illum > 0) light.color * illum else Vec3.Zero
         val specular = lightVec.dot(reflectDir.normalize)
-        val specularColor = if (specular > 0) light.color * math.pow(specular, thing.surface.roughness) else Vec.Zero
+        val specularColor = if (specular > 0) light.color * math.pow(specular, thing.surface.roughness) else Vec3.Zero
         thing.surface.diffuse(pos) * lightColor + thing.surface.specular(pos) * specularColor
       }
       else {
@@ -84,7 +86,7 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
    * @param depth The current recursion depth
    * @return Color of the reflected surface.
    */
-  private def getReflectionColor(thing: SceneObject, pos: Vec, norm: Vec, reflectDir: Vec, scene: Scene, depth: Int): Vec = {
+  private def getReflectionColor(thing: SceneObject, pos: Vec3, norm: Vec3, reflectDir: Vec3, scene: Scene, depth: Int): Vec3 = {
     traceRay(Ray(pos, reflectDir), scene, depth + 1) * thing.surface.reflect(pos)
   }
 
@@ -95,14 +97,14 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
    * @param depth Current recursion depth.
    * @return Color of the point at which the intersection occurred.
    */
-  private def shade(intersection: Intersection, scene: Scene, depth: Int): Vec = {
+  private def shade(intersection: Intersection, scene: Scene, depth: Int): Vec3 = {
     val d = intersection.ray.direction
     val pos = d * intersection.distance + intersection.ray.start
     val normal = intersection.thing.normal(pos)
     val reflectDir = d - ((normal * normal.dot(d)) * 2)
     val ret = defaultColor + getNaturalColor(intersection.thing, pos, normal, reflectDir, scene)
     if (depth >= maxDepth)
-      ret + Vec(0.5, 0.5, 0.5)
+      ret + Vec3(0.5, 0.5, 0.5)
     else {
       ret + getReflectionColor(intersection.thing, pos + reflectDir * 0.001, normal, reflectDir, scene, depth)
     }
@@ -116,33 +118,39 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int)) {
    * @param depth Current recursion depth
    * @return Color of the ray at the given position.
    */
-  private def traceRay(ray: Ray, scene: Scene, depth: Int): Vec =
-    Util.timedCall("render", printTime = false) {
-      intersections(ray, scene).headOption match {
-        case Some(intersection) => shade(intersection, scene, depth)
-        case None => backgroundColor
-      }
+  private def traceRay(ray: Ray, scene: Scene, depth: Int): Vec3 =
+    intersections(ray, scene).headOption match {
+      case Some(intersection) => shade(intersection, scene, depth)
+      case None => backgroundColor
     }
 
   private def recenterX(x: Double): Double = (x - (screenWidth / 2.0)) / (2.0 * screenWidth)
 
   private def recenterY(y: Double): Double = -(y - (screenHeight / 2.0)) / (2.0 * screenHeight)
 
-  private def getPoint(x: Double, y: Double, camera: Camera): Vec =
-    (camera.forward + (camera.right * recenterX(x) + camera.up * recenterY(y))).normalize
+  private def getPoint(pos: Vec2, camera: Camera): Vec3 =
+    (camera.forward + (camera.right * recenterX(pos.x) + camera.up * recenterY(pos.y))).normalize
 
 
   def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)) {
     val (startX, startY) = startPos
     val (endX, endY) = endPos
     val rayOrigin = scene.camera.position
+    val sampleCount = samplingPattern.length
+    val invSampleCount = 1.0 / sampleCount
+
     for {y <- startY until endY
          x <- startX until endX} {
-      val color = (for {offset <- samplingPattern
-                        sampleDir = Vec(x, y) + offset
-                        rayDir = getPoint(sampleDir.x, sampleDir.y, scene.camera)}
-      yield traceRay(Ray(rayOrigin, rayDir), scene, 0)).reduce(_ + _) * 0.25
-
+      val color = {
+        if (AAEnabled) {
+          (for {offset <- samplingPattern
+                sampleDir = Vec2(x, y) + offset
+                rayDir = getPoint(sampleDir, scene.camera)}
+          yield traceRay(Ray(rayOrigin, rayDir), scene, 0)).reduce(_ + _) * invSampleCount
+        } else {
+          traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
+        }
+      }
       setPixel(x, y, color.toScalaFxColor)
     }
   }
@@ -158,15 +166,13 @@ class ParallelRayTracer(setPixel: (Int, Int, Color) => Unit, scene: Scene, image
 
   def render() = {
     val rayTracer = new RayTracer(setPixel, imageSize)
-    val children = for (i <- 0 until numThreads) yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))
-    val ret = for ((child, idx) <- children.zipWithIndex) yield {
-      val startY = colsPerThread * idx
-      val endY = colsPerThread * (idx + 1)
+    val children = (for (i <- 0 until numThreads)
+      yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))).zipWithIndex
+    for {(child, idx) <- children
+         startY = colsPerThread * idx
+         endY = colsPerThread * (idx + 1)} yield {
       (child ? Render((0, startY), (width, endY))).mapTo[Long]
     }
-
-    //children foreach system.stop
-    ret
   }
 
   def close() {

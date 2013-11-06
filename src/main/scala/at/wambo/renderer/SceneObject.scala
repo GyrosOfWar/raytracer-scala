@@ -8,7 +8,7 @@ package at.wambo.renderer
 sealed trait SceneObject {
   def intersect(ray: Ray): Option[Intersection]
 
-  def normal(pos: Vec): Vec
+  def normal(pos: Vec3): Vec3
 
   val surface: Surface
 }
@@ -20,8 +20,8 @@ sealed trait HasSurface {
 
 trait ShinySurface extends HasSurface {
   override val surface = Surface(
-    diffuse = pos => Vec(1, 1, 1),
-    specular = pos => Vec(0.5, 0.5, 0.5),
+    diffuse = pos => Vec3(1, 1, 1),
+    specular = pos => Vec3(0.5, 0.5, 0.5),
     reflect = pos => 0.6,
     roughness = 50
   )
@@ -31,13 +31,13 @@ trait CheckerboardSurface extends HasSurface {
   override val surface = Surface(
     diffuse = pos => {
       if ((math.floor(pos.z).toInt + math.floor(pos.x).toInt) % 2 != 0) {
-        Vec(0.7, 0.14, 0.07)
+        Vec3(0.7, 0.14, 0.07)
       }
       else {
-        Vec(0.1, 0.2, 0.7)
+        Vec3(0.1, 0.2, 0.7)
       }
     },
-    specular = pos => Vec(1, 1, 1),
+    specular = pos => Vec3(1, 1, 1),
     reflect = pos => {
       if ((math.floor(pos.z).toInt + math.floor(pos.x).toInt) % 2 != 0)
         0.2
@@ -50,8 +50,8 @@ trait CheckerboardSurface extends HasSurface {
 
 trait TestSurface extends HasSurface {
   override val surface = Surface(
-    diffuse = pos => Vec(1, 1, 1),
-    specular = pos => Vec(0.5, 0.5, 0.5),
+    diffuse = pos => Vec3(1, 1, 1),
+    specular = pos => Vec3(0.5, 0.5, 0.5),
     reflect = pos => 0.9,
     roughness = 50
   )
@@ -59,14 +59,14 @@ trait TestSurface extends HasSurface {
 
 trait DiffuseSurface extends HasSurface {
   override val surface = Surface(
-    diffuse = pos => Vec(1, 1, 1),
-    specular = pos => Vec(0, 0, 0),
+    diffuse = pos => Vec3(1, 1, 1),
+    specular = pos => Vec3(0, 0, 0),
     reflect = pos => 0,
     roughness = 0
   )
 }
 
-case class Sphere(center: Vec, radius: Double) extends SceneObject with HasSurface {
+case class Sphere(center: Vec3, radius: Double) extends SceneObject with HasSurface {
   override def intersect(ray: Ray) = {
     val eo = center - ray.start
     val v = eo.dot(ray.direction)
@@ -89,10 +89,10 @@ case class Sphere(center: Vec, radius: Double) extends SceneObject with HasSurfa
 
   }
 
-  def normal(pos: Vec): Vec = (pos - center).normalize
+  def normal(pos: Vec3): Vec3 = (pos - center).normalize
 }
 
-case class Plane(normal: Vec, offset: Double) extends SceneObject with HasSurface {
+case class Plane(normal: Vec3, offset: Double) extends SceneObject with HasSurface {
   def intersect(ray: Ray): Option[Intersection] = {
     val denominator = normal.dot(ray.direction)
     if (denominator > 0)
@@ -106,5 +106,5 @@ case class Plane(normal: Vec, offset: Double) extends SceneObject with HasSurfac
     }
   }
 
-  def normal(pos: Vec): Vec = normal
+  def normal(pos: Vec3): Vec3 = normal
 }
