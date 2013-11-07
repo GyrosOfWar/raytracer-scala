@@ -5,6 +5,7 @@ import akka.actor._
 import akka.util.Timeout
 import concurrent.duration._
 import akka.pattern.ask
+import scala.concurrent.Future
 
 /*
  * User: Martin
@@ -137,20 +138,21 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int), AAEna
     val rayOrigin = scene.camera.position
     val sampleCount = samplingPattern.length
     val invSampleCount = 1.0 / sampleCount
-
-    for {y <- startY until endY
-         x <- startX until endX} {
-      val color = {
-        if (AAEnabled) {
-          (for {offset <- samplingPattern
-                sampleDir = Vec2(x, y) + offset
-                rayDir = getPoint(sampleDir, scene.camera)}
-          yield traceRay(Ray(rayOrigin, rayDir), scene, 0)).reduce(_ + _) * invSampleCount
-        } else {
-          traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
+    Util.timedCall("render", printTime = false) {
+      for {y <- startY until endY
+           x <- startX until endX} {
+        val color = {
+          if (AAEnabled) {
+            (for {offset <- samplingPattern
+                  sampleDir = Vec2(x, y) + offset
+                  rayDir = getPoint(sampleDir, scene.camera)}
+            yield traceRay(Ray(rayOrigin, rayDir), scene, 0)).reduce(_ + _) * invSampleCount
+          } else {
+            traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
+          }
         }
+        setPixel(x, y, color.toScalaFxColor)
       }
-      setPixel(x, y, color.toScalaFxColor)
     }
   }
 
@@ -163,7 +165,7 @@ class ParallelRayTracer(setPixel: (Int, Int, Color) => Unit, scene: Scene, image
   implicit val timeout = Timeout(15 seconds)
   private val colsPerThread = height / numThreads
 
-  def render() = {
+  def render(): IndexedSeq[Future[Long]] = {
     val rayTracer = new RayTracer(setPixel, imageSize)
     val children = (for (i <- 0 until numThreads)
     yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))).zipWithIndex

@@ -1,6 +1,4 @@
 import at.wambo.renderer._
-import scala.concurrent.Await
-import scala.concurrent.duration._
 import scalafx.application.JFXApp
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Button
@@ -12,11 +10,12 @@ import scalafx.event.EventIncludes._
 object Main extends JFXApp {
   val w = 800
   val h = 600
-  val numOfThreads = 8
+  val numOfThreads = 4
   val rendererImage = new WritableImage(w, h)
   val writer = rendererImage.pixelWrit
 
   def setPixel(x: Int, y: Int, color: Color) {
+    imageView.image.update(rendererImage)
     writer.setColor(x, y, color)
   }
 
@@ -39,17 +38,17 @@ object Main extends JFXApp {
     prefHeight = 25
     onAction = (e: ActionEvent) => {
       render()
-      imageView.image = rendererImage
     }
   }
 
   def render() {
     val futures = parRt.render()
-    for (f <- futures) {
-      Await.ready(f, 3 minutes)
-    }
-    parRt.close()
-    //Util.printStats("render")
+    //    futures foreach {
+    //      f =>
+    //        f onSuccess {
+    //          case t: Long => imageView.image = rendererImage
+    //        }
+    //    }
   }
 
   stage = new JFXApp.PrimaryStage {
@@ -57,6 +56,11 @@ object Main extends JFXApp {
     height = h
     width = w
     resizable = false
+
+    onCloseRequest = {
+      parRt.close()
+    }
+
     scene = new scalafx.scene.Scene(w, h) {
       root = new VBox {
         spacing = 5
