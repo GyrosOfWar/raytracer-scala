@@ -13,13 +13,18 @@ import concurrent.ExecutionContext.Implicits.global
  */
 
 trait Renderer {
-  val screenHeight: Int
-  val screenWidth: Int
+  val imageHeight: Int
+  val imageWidth: Int
 
+  /**
+   * Renders the scene and returns the finished image as an Array[Color] wrapped in a future.
+   * @param scene The [[at.wambo.renderer.Scene]] to render
+   * @return The rendered image
+   */
   def render(scene: Scene): Future[Array[Color]]
 }
 
-class RayTracer(val screenWidth: Int, val screenHeight: Int, AAEnabled: Boolean = true) extends Renderer {
+class RayTracer(val imageWidth: Int, val imageHeight: Int, AAEnabled: Boolean = true) extends Renderer {
   private val maxDepth = 5
   private val backgroundColor = Vec3.Zero
   private val defaultColor = Vec3.Zero
@@ -129,15 +134,15 @@ class RayTracer(val screenWidth: Int, val screenHeight: Int, AAEnabled: Boolean 
       case None => backgroundColor
     }
 
-  private def recenterX(x: Double): Double = (x - (screenWidth / 2.0)) / (2.0 * screenWidth)
+  private def recenterX(x: Double): Double = (x - (imageWidth / 2.0)) / (2.0 * imageWidth)
 
-  private def recenterY(y: Double): Double = -(y - (screenHeight / 2.0)) / (2.0 * screenHeight)
+  private def recenterY(y: Double): Double = -(y - (imageHeight / 2.0)) / (2.0 * imageHeight)
 
   private def getPoint(pos: Vec2, camera: Camera): Vec3 =
     (camera.forward + (camera.right * recenterX(pos.x) + camera.up * recenterY(pos.y))).normalize
 
   def render(scene: Scene) = future {
-    render(scene, (0, 0), (screenWidth, screenHeight))
+    render(scene, (0, 0), (imageWidth, imageHeight))
   }
 
   def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)): Array[Color] = {
@@ -159,7 +164,6 @@ class RayTracer(val screenWidth: Int, val screenHeight: Int, AAEnabled: Boolean 
           traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
         }
       }
-
 
       colors += color.toScalaFxColor
     }

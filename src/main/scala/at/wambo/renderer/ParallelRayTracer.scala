@@ -14,21 +14,21 @@ import scala.collection.mutable.ArrayBuffer
  * Time: 13:15
  */
 
-class ParallelRayTracer(val screenWidth: Int, val screenHeight: Int, numThreads: Int) extends Renderer {
+class ParallelRayTracer(val imageWidth: Int, val imageHeight: Int, numThreads: Int) extends Renderer {
   val system = ActorSystem("renderer")
   implicit val timeout = Timeout(15 seconds)
-  private val colsPerThread = screenHeight / numThreads
+  private val colsPerThread = imageHeight / numThreads
 
 
   // TODO when an actor is done with its part of the rendering, send him a new part of the scene to render
   def render(scene: Scene): Future[Array[Color]] = {
-    val rayTracer = new RayTracer(screenWidth, screenHeight, true)
+    val rayTracer = new RayTracer(imageWidth, imageHeight, true)
     val children = (for (i <- 0 until numThreads)
     yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))).zipWithIndex
     val futures = for {(child, idx) <- children
                        startY = colsPerThread * idx
                        endY = colsPerThread * (idx + 1)} yield {
-      child ? Render((0, startY), (screenWidth, endY))
+      child ? Render((0, startY), (imageWidth, endY))
     }
 
     val buffer = ArrayBuffer.empty[(Array[Color], Int)]

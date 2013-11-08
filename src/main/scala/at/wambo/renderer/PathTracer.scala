@@ -8,6 +8,6 @@ import concurrent.Future
  * Date: 08.11.13
  * Time: 15:58
  */
-class PathTracer(val screenWidth: Int, val screenHeight: Int) extends Renderer {
+class PathTracer(val imageWidth: Int, val imageHeight: Int) extends Renderer {
   def render(scene: Scene): Future[Array[Color]] = ???
 }
