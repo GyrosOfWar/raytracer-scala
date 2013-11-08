@@ -1,5 +1,5 @@
 import at.wambo.renderer._
-import scalafx.application.JFXApp
+import scalafx.application.{Platform, JFXApp}
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Button
 import scalafx.scene.image.{ImageView, WritableImage}
@@ -15,13 +15,15 @@ object Main extends JFXApp {
   val writer = rendererImage.pixelWrit
 
   def setPixel(x: Int, y: Int, color: Color) {
-    imageView.image.update(rendererImage)
-    writer.setColor(x, y, color)
+    Platform.runLater {
+      imageView.image.update(rendererImage)
+      writer.setColor(x, y, color)
+    }
   }
 
   val rendererScene = Scene(
     things = Vector(
-      new Plane(normal = Vec3(0, 1, 0), offset = 0) with CheckerboardSurface,
+      new Plane(normal = Vec3(0, 1, 0), offset = 0) with ShinySurface,
       new Sphere(center = Vec3(-1, 0.5, 1.5), radius = 0.5) with ShinySurface,
       new Sphere(center = Vec3(1, 0.5, 1.5), radius = 0.5) with DiffuseSurface
     ),
@@ -30,7 +32,7 @@ object Main extends JFXApp {
       Light(position = Vec3(-4, 5, 3), color = Vec3.One)
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
-  val parRt = new ParallelRayTracer(setPixel, rendererScene, (w, h), numOfThreads)
+  val parRt = new ParallelRayTracer(setPixel, w, h, numOfThreads)
 
   lazy val imageView = new ImageView()
 
@@ -42,13 +44,7 @@ object Main extends JFXApp {
   }
 
   def render() {
-    val futures = parRt.render()
-    //    futures foreach {
-    //      f =>
-    //        f onSuccess {
-    //          case t: Long => imageView.image = rendererImage
-    //        }
-    //    }
+    parRt.render(rendererScene)
   }
 
   stage = new JFXApp.PrimaryStage {

@@ -1,11 +1,6 @@
 package at.wambo.renderer
 
 import scalafx.scene.paint.Color
-import akka.actor._
-import akka.util.Timeout
-import concurrent.duration._
-import akka.pattern.ask
-import scala.concurrent.Future
 
 /*
  * User: Martin
@@ -13,11 +8,18 @@ import scala.concurrent.Future
  * Time: 23:40
  */
 
-class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int), AAEnabled: Boolean = true) {
+trait Renderer {
+  val setPixel: (Int, Int, Color) => Unit
+  val screenHeight: Int
+  val screenWidth: Int
+
+  def render(scene: Scene): Unit
+}
+
+class RayTracer(val setPixel: (Int, Int, Color) => Unit, val screenWidth: Int, val screenHeight: Int, AAEnabled: Boolean = true) extends Renderer {
   private val maxDepth = 5
   private val backgroundColor = Vec3.Zero
   private val defaultColor = Vec3.Zero
-  private val (screenWidth, screenHeight) = size
   private val samplingPattern = List(Vec2(0, 0.25), Vec2(0, -0.25), Vec2(0.25, 0), Vec2(-0.25, 0), Vec2(0, 0)).map(_ * 2)
   //private val samplingPattern = for(_ <- 1 to 4) yield Vec2(math.random-1, math.random-1)
 
@@ -131,6 +133,9 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int), AAEna
   private def getPoint(pos: Vec2, camera: Camera): Vec3 =
     (camera.forward + (camera.right * recenterX(pos.x) + camera.up * recenterY(pos.y))).normalize
 
+  def render(scene: Scene) {
+    render(scene, (0, 0), (screenWidth, screenHeight))
+  }
 
   def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)) {
     val (startX, startY) = startPos
@@ -138,58 +143,20 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, size: (Int, Int), AAEna
     val rayOrigin = scene.camera.position
     val sampleCount = samplingPattern.length
     val invSampleCount = 1.0 / sampleCount
-    Util.timedCall("render", printTime = false) {
-      for {y <- startY until endY
-           x <- startX until endX} {
-        val color = {
-          if (AAEnabled) {
-            (for {offset <- samplingPattern
-                  sampleDir = Vec2(x, y) + offset
-                  rayDir = getPoint(sampleDir, scene.camera)}
-            yield traceRay(Ray(rayOrigin, rayDir), scene, 0)).reduce(_ + _) * invSampleCount
-          } else {
-            traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
-          }
+    for {y <- startY until endY
+         x <- startX until endX} {
+      val color = {
+        if (AAEnabled) {
+          (for {offset <- samplingPattern
+                sampleDir = Vec2(x, y) + offset
+                rayDir = getPoint(sampleDir, scene.camera)}
+          yield traceRay(Ray(rayOrigin, rayDir), scene, 0)).reduce(_ + _) * invSampleCount
+        } else {
+          traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
         }
-        setPixel(x, y, color.toScalaFxColor)
       }
-    }
-  }
+      setPixel(x, y, color.toScalaFxColor)
 
-}
-
-
-class ParallelRayTracer(setPixel: (Int, Int, Color) => Unit, scene: Scene, imageSize: (Int, Int), numThreads: Int) {
-  val system = ActorSystem("renderer")
-  val (width, height) = imageSize
-  implicit val timeout = Timeout(15 seconds)
-  private val colsPerThread = height / numThreads
-
-  def render(): IndexedSeq[Future[Long]] = {
-    val rayTracer = new RayTracer(setPixel, imageSize)
-    val children = (for (i <- 0 until numThreads)
-    yield system.actorOf(Props(classOf[RenderActor], rayTracer, scene))).zipWithIndex
-    for {(child, idx) <- children
-         startY = colsPerThread * idx
-         endY = colsPerThread * (idx + 1)} yield {
-      (child ? Render((0, startY), (width, endY))).mapTo[Long]
-    }
-  }
-
-  def close() {
-    system.shutdown()
-  }
-}
-
-case class Render(startPos: (Int, Int), endPos: (Int, Int))
-
-case class Finished(time: Long)
-
-class RenderActor(rt: RayTracer, scene: Scene) extends Actor {
-  def receive = {
-    case Render(start, end) => {
-      rt.render(scene, start, end)
-      sender ! Finished(System.nanoTime())
     }
   }
 }

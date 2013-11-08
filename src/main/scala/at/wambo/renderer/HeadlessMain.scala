@@ -1,8 +1,6 @@
 package at.wambo.renderer
 
 import scalafx.scene.paint.Color
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /*
  * User: Martin
@@ -25,14 +23,10 @@ object HeadlessMain {
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
 
-  val prt = new ParallelRayTracer((x: Int, y: Int, c: Color) => image(x)(y) = c, scene, (h, w), 4)
+  val prt = new ParallelRayTracer((x: Int, y: Int, c: Color) => image(x)(y) = c, h, w, 4)
 
   def main(args: Array[String]) {
-    val xs = prt.render()
-    for (f <- xs) yield {
-      Await.ready(f, 2 minutes)
-    }
-    Util.printStats("render")
+    prt.render(scene)
     prt.close()
   }
 
