@@ -23,7 +23,7 @@ object HeadlessMain {
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
 
-  val prt = new ParallelRayTracer((x: Int, y: Int, c: Color) => image(x)(y) = c, h, w, 4)
+  val prt = new ParallelRayTracer(h, w, 4)
 
   def main(args: Array[String]) {
     prt.render(scene)

@@ -1,6 +1,10 @@
 package at.wambo.renderer
 
 import scalafx.scene.paint.Color
+import scala.collection.mutable.ArrayBuffer
+import concurrent.Future
+import concurrent.future
+import concurrent.ExecutionContext.Implicits.global
 
 /*
  * User: Martin
@@ -9,14 +13,13 @@ import scalafx.scene.paint.Color
  */
 
 trait Renderer {
-  val setPixel: (Int, Int, Color) => Unit
   val screenHeight: Int
   val screenWidth: Int
 
-  def render(scene: Scene): Unit
+  def render(scene: Scene): Future[Array[Color]]
 }
 
-class RayTracer(val setPixel: (Int, Int, Color) => Unit, val screenWidth: Int, val screenHeight: Int, AAEnabled: Boolean = true) extends Renderer {
+class RayTracer(val screenWidth: Int, val screenHeight: Int, AAEnabled: Boolean = true) extends Renderer {
   private val maxDepth = 5
   private val backgroundColor = Vec3.Zero
   private val defaultColor = Vec3.Zero
@@ -133,16 +136,17 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, val screenWidth: Int, v
   private def getPoint(pos: Vec2, camera: Camera): Vec3 =
     (camera.forward + (camera.right * recenterX(pos.x) + camera.up * recenterY(pos.y))).normalize
 
-  def render(scene: Scene) {
+  def render(scene: Scene) = future {
     render(scene, (0, 0), (screenWidth, screenHeight))
   }
 
-  def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)) {
+  def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)): Array[Color] = {
     val (startX, startY) = startPos
     val (endX, endY) = endPos
     val rayOrigin = scene.camera.position
     val sampleCount = samplingPattern.length
     val invSampleCount = 1.0 / sampleCount
+    val colors = ArrayBuffer.empty[Color]
     for {y <- startY until endY
          x <- startX until endX} {
       val color = {
@@ -155,8 +159,10 @@ class RayTracer(val setPixel: (Int, Int, Color) => Unit, val screenWidth: Int, v
           traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
         }
       }
-      setPixel(x, y, color.toScalaFxColor)
 
+
+      colors += color.toScalaFxColor
     }
+    colors.toArray
   }
 }

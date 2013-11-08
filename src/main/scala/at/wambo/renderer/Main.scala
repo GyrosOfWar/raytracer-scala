@@ -1,8 +1,8 @@
 import at.wambo.renderer._
-import scalafx.application.{Platform, JFXApp}
+import scalafx.application.JFXApp
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Button
-import scalafx.scene.image.{ImageView, WritableImage}
+import scalafx.scene.image.{PixelFormat, ImageView, WritableImage}
 import scalafx.scene.layout.VBox
 import scalafx.scene.paint.Color
 import scalafx.event.EventIncludes._
@@ -14,11 +14,20 @@ object Main extends JFXApp {
   val rendererImage = new WritableImage(w, h)
   val writer = rendererImage.pixelWrit
 
-  def setPixel(x: Int, y: Int, color: Color) {
-    Platform.runLater {
-      imageView.image.update(rendererImage)
-      writer.setColor(x, y, color)
+  def colorToByteArray(arr: Array[Color]): Array[Byte] = {
+    val imageData = Array.fill[Byte](arr.size * 3)(0)
+    var k = 0
+    for (c <- arr) {
+      val r = c.red * 255.0
+      val g = c.green * 255.0
+      val b = c.blue * 255.0
+      imageData(k) = r.toByte
+      imageData(k + 1) = g.toByte
+      imageData(k + 2) = b.toByte
+
+      k += 3
     }
+    imageData
   }
 
   val rendererScene = Scene(
@@ -32,19 +41,28 @@ object Main extends JFXApp {
       Light(position = Vec3(-4, 5, 3), color = Vec3.One)
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
-  val parRt = new ParallelRayTracer(setPixel, w, h, numOfThreads)
+  val parRt = new ParallelRayTracer(w, h, numOfThreads)
+  val rt = new RayTracer(w, h)
 
   lazy val imageView = new ImageView()
 
   lazy val renderButton = new Button("Render") {
-    prefHeight = 25
     onAction = (e: ActionEvent) => {
       render()
+      imageView.image() = rendererImage
     }
   }
 
   def render() {
-    parRt.render(rendererScene)
+    import parRt.system.dispatcher
+
+    val renderResult = rt.render(rendererScene)
+    renderResult onSuccess {
+      case result =>
+        val pixels = colorToByteArray(result)
+        writer.setPixels(0, 0, w, h, PixelFormat.getByteRgbInstance, pixels, 0, w * 3)
+        println("Finished!")
+    }
   }
 
   stage = new JFXApp.PrimaryStage {
