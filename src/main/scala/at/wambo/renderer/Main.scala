@@ -42,7 +42,7 @@ object Main extends JFXApp {
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
   val parRt = new ParallelRayTracer(w, h, numOfThreads)
-  val rt = new RayTracer(w, h)
+  //val rt = new RayTracer(w, h)
 
   lazy val imageView = new ImageView()
 
@@ -56,12 +56,11 @@ object Main extends JFXApp {
   def render() {
     import parRt.system.dispatcher
 
-    val renderResult = rt.render(rendererScene)
+    val renderResult = parRt.render(rendererScene)
     renderResult onSuccess {
       case result =>
         val pixels = colorToByteArray(result)
         writer.setPixels(0, 0, w, h, PixelFormat.getByteRgbInstance, pixels, 0, w * 3)
-        println("Finished!")
     }
   }
 
