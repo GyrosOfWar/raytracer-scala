@@ -31,7 +31,11 @@ class ParallelRayTracer(val imageWidth: Int, val imageHeight: Int, numThreads: I
       }
 
     import system.dispatcher
-    Future.traverse(futures)(_.map(_.data)).map(_.flatten.toArray)
+    Future.traverse(futures) {
+      _.map {
+        case RenderResult(time, data) => data
+      }
+    }.map(_.flatten.toArray)
   }
 
   def close() {
@@ -43,13 +47,13 @@ sealed trait Message
 
 case class RenderJob(startPos: (Int, Int), endPos: (Int, Int)) extends Message
 
-case class RenderResult(time: Long, start: (Int, Int), end: (Int, Int), data: Array[Color]) extends Message
+case class RenderResult(time: Long, data: Array[Color]) extends Message
 
 class RenderActor(rt: RayTracer, scene: Scene) extends Actor {
   def receive = {
     case RenderJob(start, end) => {
       val data = rt.render(scene, start, end)
-      sender ! RenderResult(System.nanoTime(), start, end, data)
+      sender ! RenderResult(System.nanoTime(), data)
     }
   }
 }

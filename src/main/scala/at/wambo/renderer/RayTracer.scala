@@ -5,6 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import concurrent.Future
 import concurrent.future
 import concurrent.ExecutionContext.Implicits.global
+import scalafx.beans.property.IntegerProperty
 
 /*
  * User: Martin
@@ -30,6 +31,8 @@ class RayTracer(val imageWidth: Int, val imageHeight: Int, AAEnabled: Boolean = 
   private val defaultColor = Vec3.Zero
   private val samplingPattern = List(Vec2(0, 0.25), Vec2(0, -0.25), Vec2(0.25, 0), Vec2(-0.25, 0), Vec2(0, 0)).map(_ * 2)
   //private val samplingPattern = for(_ <- 1 to 4) yield Vec2(math.random-1, math.random-1)
+
+  val pixelsDrawn = IntegerProperty(0)
 
   /**
    * Intersects a ray with a scene.
@@ -145,13 +148,14 @@ class RayTracer(val imageWidth: Int, val imageHeight: Int, AAEnabled: Boolean = 
     render(scene, (0, 0), (imageWidth, imageHeight))
   }
 
-  def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)): Array[Color] = {
+  private[renderer] def render(scene: Scene, startPos: (Int, Int), endPos: (Int, Int)): Array[Color] = {
     val (startX, startY) = startPos
     val (endX, endY) = endPos
     val rayOrigin = scene.camera.position
     val sampleCount = samplingPattern.length
     val invSampleCount = 1.0 / sampleCount
     val colors = ArrayBuffer.empty[Color]
+
     for {y <- startY until endY
          x <- startX until endX} {
       val color = {
@@ -164,8 +168,8 @@ class RayTracer(val imageWidth: Int, val imageHeight: Int, AAEnabled: Boolean = 
           traceRay(Ray(rayOrigin, getPoint(Vec2(x, y), scene.camera)), scene, 0)
         }
       }
-
       colors += color.toScalaFxColor
+      pixelsDrawn() += 1
     }
     colors.toArray
   }

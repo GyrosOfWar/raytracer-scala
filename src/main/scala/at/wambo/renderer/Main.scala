@@ -1,7 +1,7 @@
 import at.wambo.renderer._
 import scalafx.application.JFXApp
 import scalafx.event.ActionEvent
-import scalafx.scene.control.Button
+import scalafx.scene.control.{ProgressBar, Button}
 import scalafx.scene.image.{PixelFormat, ImageView, WritableImage}
 import scalafx.scene.layout.VBox
 import scalafx.scene.paint.Color
@@ -41,26 +41,40 @@ object Main extends JFXApp {
       Light(position = Vec3(-4, 5, 3), color = Vec3.One)
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
-  val parRt = new ParallelRayTracer(w, h, numOfThreads)
-  //val rt = new RayTracer(w, h)
-
-  lazy val imageView = new ImageView()
+  // val parRt = new ParallelRayTracer(w, h, numOfThreads)
+  val rt = new RayTracer(w, h, true)
+  lazy val imageView = new ImageView {
+    visible = false
+  }
 
   lazy val renderButton = new Button("Render") {
-    onAction = (e: ActionEvent) => {
-      render()
-      imageView.image() = rendererImage
-    }
+    onAction = (_: ActionEvent) => render()
+  }
+
+  lazy val progressBar = new ProgressBar {
+    prefWidth = 200
+    prefHeight = 15
+    visible = false
+    progress <== rt.pixelsDrawn / (h * w).toDouble
   }
 
   def render() {
-    import parRt.system.dispatcher
+    // import parRt.system.dispatcher
+    import concurrent.ExecutionContext.Implicits.global
 
-    val renderResult = parRt.render(rendererScene)
+    val renderResult = rt.render(rendererScene)
+    imageView.image() = rendererImage
+    imageView.visible = false
+    renderButton.visible = false
+    progressBar.visible = true
+
     renderResult onSuccess {
       case result =>
         val pixels = colorToByteArray(result)
         writer.setPixels(0, 0, w, h, PixelFormat.getByteRgbInstance, pixels, 0, w * 3)
+        imageView.visible = true
+        renderButton.visible = false
+        progressBar.visible = false
     }
   }
 
@@ -68,16 +82,16 @@ object Main extends JFXApp {
     title = "RayTracer"
     height = h
     width = w
-    resizable = false
+    resizable = true
 
     onCloseRequest = {
-      parRt.close()
+      // parRt.close()
     }
 
     scene = new scalafx.scene.Scene(w, h) {
       root = new VBox {
         spacing = 5
-        content = List(imageView, renderButton)
+        content = List(imageView, progressBar, renderButton)
       }
     }
   }
