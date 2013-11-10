@@ -32,7 +32,7 @@ object Main extends JFXApp {
 
   val rendererScene = Scene(
     things = Vector(
-      new Plane(normal = Vec3(0, 1, 0), offset = 0) with ShinySurface,
+      new Plane(normal = Vec3(0, 1, 0), offset = 0) with CheckerboardSurface,
       new Sphere(center = Vec3(-1, 0.5, 1.5), radius = 0.5) with ShinySurface,
       new Sphere(center = Vec3(1, 0.5, 1.5), radius = 0.5) with DiffuseSurface
     ),
