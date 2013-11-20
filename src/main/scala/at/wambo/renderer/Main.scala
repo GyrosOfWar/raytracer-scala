@@ -41,8 +41,8 @@ object Main extends JFXApp {
       Light(position = Vec3(-4, 5, 3), color = Vec3.One)
     ), camera = Camera(Vec3(3, 2, 4), Vec3(-3, -1, -1)))
 
-  // val parRt = new ParallelRayTracer(w, h, numOfThreads)
-  val rt = new RayTracer(w, h, true)
+   val parRt = new ParallelRayTracer(w, h, numOfThreads)
+  //val rt = new RayTracer(w, h, true)
   lazy val imageView = new ImageView {
     visible = false
   }
@@ -55,15 +55,14 @@ object Main extends JFXApp {
     prefWidth = 200
     prefHeight = 15
     visible = false
-    progress <== rt.pixelsDrawn / (h * w).toDouble
+    //progress <== parRt.pixelsDrawn / (h * w).toDouble
   }
 
   def render() {
-    // import parRt.system.dispatcher
-    import concurrent.ExecutionContext.Implicits.global
+     import parRt.system.dispatcher
+    //import concurrent.ExecutionContext.Implicits.global
 
-    val renderResult = rt.render(rendererScene)
-    imageView.image() = rendererImage
+    val renderResult = parRt.render(rendererScene)
     imageView.visible = false
     renderButton.visible = false
     progressBar.visible = true
@@ -75,6 +74,7 @@ object Main extends JFXApp {
         imageView.visible = true
         renderButton.visible = false
         progressBar.visible = false
+        imageView.image() = rendererImage
     }
   }
 
@@ -82,10 +82,10 @@ object Main extends JFXApp {
     title = "RayTracer"
     height = h
     width = w
-    resizable = true
+    resizable = false
 
     onCloseRequest = {
-      // parRt.close()
+      parRt.close()
     }
 
     scene = new scalafx.scene.Scene(w, h) {
